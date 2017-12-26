@@ -16,27 +16,6 @@
 ;; (let* ((dcn (mapcar (lambda (item) (assoc-default 'DCN item)) phillyblotter-json-data))
 ;;        (occurred (mapcar (lambda (item) (assoc-default 'Occurred item)) phillyblotter-json-data))
 ;;        )
-;;   (switch-to-buffer "*Blotter*")
-;;   (org-mode)
-;;   (insert "| DCN | Occured |\n")
-;;   (insert "|-----\n")
-;;   (mapcar* (lambda (dcn occurred)
-;; 	     (insert "| ")
-;; 	     (widget-create 'push-button
-;; 			    :notify (lambda (&rest ignore)
-;; 				      (message "heh"))
-;; 			    dcn)
-;; 	     (insert " | ")
-;; 	     (insert (format "%s |\n" occurred))
-
-;; ;;	     (insert " | \n")
-;; 	     ;; (insert (format "| %s | %s | \n" dcn occurred))
-;; 	     )	   
-;; 	   dcn occurred)
-;;   (beginning-of-buffer)
-;;   (org-cycle)
-;;   (use-local-map widget-keymap)
-;;   (widget-setup)
 ;;   )
 
 (defun phillyblotter-calculate-age(birthdate)
@@ -65,9 +44,57 @@
 	 ;; Magic!
 	 (string-to-number (substring age 0 (- (length age) 4))))
   )
+     )
+
+(defun phillyblotter-display-blotter (neighborhood)
+  "Displays the neighborhood blotter given a neighborhood ID number"
+  (interactive "sEnter the neighborhood ID number: ")
+  (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Blotter/" neighborhood "/"))
+  (let* ((dcn (mapcar (lambda (item) (assoc-default 'DCN item)) phillyblotter-json-data))
+	 (occurred (mapcar (lambda (item) (assoc-default 'Occurred item)) phillyblotter-json-data))
+	 (long (mapcar (lambda (item) (assoc-default 'Longitude item)) phillyblotter-json-data))
+	 (lat (mapcar (lambda (item) (assoc-default 'Latitutde item)) phillyblotter-json-data))
+	 (address (mapcar (lambda (item) (assoc-default 'Address item)) phillyblotter-json-data))
+	 (title (mapcar (lambda (item) (assoc-default 'Title item)) phillyblotter-json-data))
+	 (type (mapcar (lambda (item) (assoc-default 'Type item)) phillyblotter-json-data))
+	 (code (mapcar (lambda (item) (assoc-default 'Code item)) phillyblotter-json-data))
+	 (arrestcount (mapcar (lambda (item) (assoc-default 'ArrestCount item)) phillyblotter-json-data))
+	 )
+
+    (switch-to-buffer "*Blotter*")
+    (widget-insert "    Occurred            Crime                           Address\n")
+
+      (org-mode)
+     ;; (insert "| DCN | Occured | Crime | Address |\n")
+      ;; (insert "|-----\n")
+      (setq-local count 0)
+      (mapcar* (lambda (dcn occurred title address)
+;;	     (insert "| ")
+;;	     (widget-create 'push-button
+			    ;; :notify (lambda (&rest ignore)
+			    ;; 	      (message "heh"))
+		 ;; dcn)
+		 (setq-local count (1+ count))
+		 (insert (format "%s.  " count))
+		 (move-to-column 4)
+		 (insert (format "%s                   " occurred))
+		 (move-to-column 24)
+		 (insert (format "%s" title))
+		 (delete-trailing-whitespace)
+		 (insert "\n")
+	     ;;(insert " | ")
+	     ;;(insert (format "%s | %s | %s |\n" occurred title address))
+;;	     (insert " | \n")
+	     ;; (insert (format "| %s | %s | \n" dcn occurred))
+	     )
+	   dcn occurred title address)
+      (beginning-of-buffer)
+      ;;(org-cycle)
+      (use-local-map widget-keymap)
+      (widget-setup)
+    )
 )
 
-  
 (defun phillyblotter/xah-fix-datetime-stamp (@input-string &optional @begin-end)
   "Change timestamp under cursor into a yyyy-mm-dd format.
 If there's a text selection, use that as input, else use current line.
@@ -165,7 +192,7 @@ Version 2015-04-14"
 
 (defun phillyblotter()
   "Launches PhillyBlotter"
-   (interactive)
+  (interactive)
    (phillyblotter-fetch-json "https://www.philadelinquency.com/phillycrime/api/Neighborhood/")
    (let* ((names (mapcar (lambda (item) (assoc-default 'Name item)) phillyblotter-json-data))
           (ids (mapcar (lambda (item) (assoc-default 'ID item)) phillyblotter-json-data)))
@@ -193,7 +220,7 @@ Version 2015-04-14"
           (beginning-of-buffer)
 	  (use-local-map widget-keymap)
 	  (widget-setup)
-         )				
+         )
    )
 
 (defun phillyblotter-display-crime(crimeid)
@@ -215,7 +242,7 @@ Version 2015-04-14"
 	    (insert "\n")
 	    (insert "\n")
 	    (org-mode)
-	    (insert "| Statute | Charge |\n")	    
+	    (insert "| Statute | Charge |\n")
 	    (insert "|--------\n")
 	    (mapc (lambda (charge)
 		    (insert (format "| %s | %s |\n" (replace-regexp-in-string "Â" "" (alist-get 'Statute charge)) (alist-get 'Description charge)))
@@ -224,12 +251,12 @@ Version 2015-04-14"
 	    (org-mode)
 	    )
 	fullarrestdetail)
-        
+
 	(insert "\n\n")
 
 	;;	(widget-insert (format "DCN: %s            Type: %s" dcn (alist-get 'TEXT_GENERAL_CODE fullcrimedetail)))
 	(insert "\n")
-    
+
 	(widget-create 'push-button
 		   :notify (lambda (&rest ignore)
 			     (kill-buffer)
