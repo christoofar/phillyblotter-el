@@ -80,6 +80,8 @@
 		 (insert (format "%s                   " occurred))
 		 (move-to-column 24)
 		 (insert (format "%s" title))
+		 (move-to-column 56)
+		 (insert (format "%s" address))
 		 (delete-trailing-whitespace)
 		 (insert "\n")
 	     ;;(insert " | ")
