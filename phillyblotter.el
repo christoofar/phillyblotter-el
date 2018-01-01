@@ -276,7 +276,7 @@ Version 2015-04-14"
   )
 
 (defun phillyblotter-display-crime(crimeid)
-  "Displays a crime given the DCN number"
+  "Displays a crime given the DCN number."
   (interactive "sEnter Philadelphia Police DCN number:")
   (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Crime/" crimeid "/"))
   
