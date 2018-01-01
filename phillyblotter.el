@@ -104,7 +104,7 @@
 		 (widget-create 'push-button
 				:DCN dcn
 				:action (lambda (widget &rest ignore)
-					  (eval (car (read-from-string (concat "(phillyblotter-display-crime \"" (widget-get widget 'DCN) "\")") )))
+					  (eval (car (read-from-string (concat "(phillyblotter-display-crime \"" (widget-get widget ':DCN) "\")") )))
 					  )
 				(propertize (concat (number-to-string count) ".") 'font-lock-face '(:foreground "blue"))
 				)
@@ -279,7 +279,7 @@ Version 2015-04-14"
   "Displays a crime given the DCN number"
   (interactive "sEnter Philadelphia Police DCN number:")
   (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Crime/" crimeid "/"))
-
+  
   (let* ((dcn (assoc-default 'DCN phillyblotter-json-data))
 	 (fullcrimedetail (assoc-default 'FullCrimeDetail phillyblotter-json-data))
 	 (fullarrestdetail (assoc-default 'FullArrestDetails phillyblotter-json-data)))
@@ -289,6 +289,11 @@ Version 2015-04-14"
     (widget-insert "┍━━━━━━━━━━━━━━━━━━━━━━━┑\n")
     (widget-insert "│ Crime Details         │\n")
     (widget-insert "┕━━━━━━━━━━━━━━━━━━━━━━━┙\n\n")
+    (widget-insert (format " Police District %s, PSA%s\n" (alist-get 'DC_DIST fullcrimedetail) (alist-get 'SECTOR fullcrimedetail)))
+    (widget-insert (format " Dispatch Date %s   Time %s\n\n" (substring (alist-get 'DISPATCH_DATE fullcrimedetail) 0 10) (substring (alist-get 'DISPATCH_TIME fullcrimedetail) 11 19)))
+    (widget-insert (propertize (format " %s\n\n" (alist-get 'TEXT_GENERAL_CODE fullcrimedetail)) 'font-lock-face '(:foreground "red")))
+    (widget-insert (format " %s\n" (alist-get 'LOCATION_BLOCK fullcrimedetail)))
+    (insert "\n")
     (mapc (lambda (x)
 	    (widget-insert (format "%s, %s  DOB: %s" (alist-get 'Defendant x) (concat "(" (number-to-string (phillyblotter-calculate-age (phillyblotter/xah-fix-datetime-stamp (alist-get 'DateOfBirth x)))) ")") (alist-get 'DateOfBirth x)))
 	    (insert "\n")
