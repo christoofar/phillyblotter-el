@@ -47,8 +47,8 @@
 )
 
 (defun phillyblotter-get-neighborhood(id)
-  "Returns the neighborhood name for a given neighborhood ID number"
-  (interactive "nEnter the neighborhood ID number: ")
+  "Returns the neighborhood name for a given neighborhood ID number, or the id number if the name is passed in"
+  (interactive "sEnter the neighborhood ID number: ")
 
   (if (not (boundp 'phillyblotter-neighborhoods))
       (progn
@@ -61,20 +61,24 @@
          (ID (mapcar (lambda (item) (assoc-default 'ID item)) phillyblotter-neighborhoods)))
 
     (catch 'complete
-    (mapcar* (lambda (ihood iID)
-      (if (= iID id)
-    	    (throw 'complete ihood))
-      ) hood ID)
+      (mapcar* (lambda (ihood iID)
+      (cond ((numberp id) (progn
+        (if (= iID id)
+    	    (throw 'complete ihood))))
+	    ((stringp id) (progn
+      (if (string= ihood id)
+	  (throw 'complete iID)))))
+      ) hood ID)    
       nil
     )
-    
   )
 )
 
 (defun phillyblotter-display-blotter (neighborhood)
   "Displays the neighborhood blotter given a neighborhood ID number"
   (interactive "sEnter the neighborhood ID number: ")
-  (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Blotter/" neighborhood "/"))
+  (let* ((hood (if (numberp neighborhood) (number-to-string neighborhood) neighborhood)))
+  (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Blotter/" hood "/"))
   (let* ((dcn (mapcar (lambda (item) (assoc-default 'DCN item)) phillyblotter-json-data))
 	 (occurred (mapcar (lambda (item) (assoc-default 'Occurred item)) phillyblotter-json-data))
 	 (long (mapcar (lambda (item) (assoc-default 'Longitude item)) phillyblotter-json-data))
@@ -89,7 +93,7 @@
     (switch-to-buffer "*Blotter*")
     
     (insert "\n")
-    (insert (concat "\t\t10-Day Neighborhood blotter for " (phillyblotter-get-neighborhood (string-to-number neighborhood)) "\n"))
+    (insert (concat "\t\t10-Day Neighborhood blotter for " (phillyblotter-get-neighborhood (string-to-number hood)) "\n"))
     (insert (propertize "      Occurred                Crime                         Address                     Arrest\n" 'font-lock-face '(:foreground "red")))
 
     (org-mode)
@@ -130,7 +134,7 @@
     (use-local-map widget-keymap)
     (widget-setup)
     )
-  )
+  ))
 
 (defun phillyblotter/xah-fix-datetime-stamp (@input-string &optional @begin-end)
   "Change timestamp under cursor into a yyyy-mm-dd format.
@@ -230,24 +234,31 @@ Version 2015-04-14"
 (defun phillyblotter()
   "Launches PhillyBlotter"
   (interactive)
-   (phillyblotter-fetch-json "https://www.philadelinquency.com/phillycrime/api/Neighborhood/")
-   (let* ((names (mapcar (lambda (item) (assoc-default 'Name item)) phillyblotter-json-data))
-          (ids (mapcar (lambda (item) (assoc-default 'ID item)) phillyblotter-json-data)))
+   (phillyblotter-get-neighborhood 1)
+   (let* ((names (mapcar (lambda (item) (assoc-default 'Name item)) phillyblotter-neighborhoods))
+          (ids (mapcar (lambda (item) (assoc-default 'ID item)) phillyblotter-neighborhoods)))
           (switch-to-buffer "*Neighborhood List*")
           (insert "Neighborhood Selection: \n\n")
-          ;;(org-mode)
-          ;; (insert "[[elisp:(find-function 'describe-function)][describe-function]]\n\n")
-          ;;(insert "| Neighborhood | ID |\n")
-          ;;(insert "|-----\n")
+;;          (org-mode)
+;;            (insert "[[elisp:(find-function 'describe-function)][describe-function]]\n\n")
+;;            (insert "| Neighborhood |\n")
+;;	    (mapcar* (lambda (name id)
+;;		      (insert (concat "[[elisp:(phillyblotter-display-blotter " (number-to-string id) "][" name "]]\n"))
+;;		      ) names ids)
+;;          (insert "|-----\n")
           (mapcar* (lambda (name id)
-   		  ;;(message "id: %s  name: %s" name id)
-   		     ;;(insert (format "| %s | %s |\n" name id))
-		     (widget-create 'link (format "%s" name))
-		     (insert "\n")
-   		   )		   
-   		   names ids)
-	  ;;(org-table-align)
-          ;;(org-mode)
+   	  	  ;;(message "id: %s  name: %s" name id)
+   	  	     ;;(insert (format "| %s | %s |\n" name id))
+	  	     (widget-create 'push-button
+	  			    :action (lambda(widget &rest ignore)
+	  				      (eval (car (read-from-string (concat "(phillyblotter-display-blotter " (number-to-string (phillyblotter-get-neighborhood (widget-value widget))) ")")))))
+	  			    name
+	  			    )
+	  	     (insert "\n")
+   	  	   )		   
+   	  	   names ids)
+;;	  (org-table-align)
+;;          (org-mode)
 	  (insert "\n\n")
 	  (widget-create 'push-button
 			 :notify (lambda (&rest ignore)
