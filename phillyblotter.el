@@ -1,3 +1,8 @@
+(defcustom phillyblotter-url "https://www.philadelinquency.com/phillycrime/api/"
+  "The URL for Phillyblotter data"
+  :type 'string
+  :group 'phillyblotter )
+
 (defun phillyblotter-fetch-json (url)
   (setq phillyblotter-json-data (with-current-buffer (url-retrieve-synchronously url)
 					; there's probably a better way of stripping the headers
@@ -11,12 +16,6 @@
 				  ))
   )
 
-;;(fetch-json "http://www.philadelinquency.com/phillycrime/api/Blotter/34/")
-
-;; (let* ((dcn (mapcar (lambda (item) (assoc-default 'DCN item)) phillyblotter-json-data))
-;;        (occurred (mapcar (lambda (item) (assoc-default 'Occurred item)) phillyblotter-json-data))
-;;        )
-;;   )
 
 (defun phillyblotter-calculate-age(birthdate)
   "Given a date string for BIRTHDATE, return the age of that person in years"
@@ -52,7 +51,7 @@
 
   (if (not (boundp 'phillyblotter-neighborhoods))
       (progn
-        (phillyblotter-fetch-json "https://www.philadelinquency.com/phillycrime/api/Neighborhood/")
+        (phillyblotter-fetch-json (concat phillyblotter-url "Neighborhood/"))
         (setq phillyblotter-neighborhoods phillyblotter-json-data)	
 	)
     )
@@ -78,7 +77,7 @@
   "Displays the neighborhood blotter given a neighborhood ID number"
   (interactive "sEnter the neighborhood ID number: ")
   (let* ((hood (if (numberp neighborhood) (number-to-string neighborhood) neighborhood)))
-    (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Blotter/" hood "/"))
+    (phillyblotter-fetch-json (concat phillyblotter-url "Blotter/" hood "/"))
     (let* ((dcn (mapcar (lambda (item) (assoc-default 'DCN item)) phillyblotter-json-data))
 	   (occurred (mapcar (lambda (item) (assoc-default 'Occurred item)) phillyblotter-json-data))
 	   (long (mapcar (lambda (item) (assoc-default 'Longitude item)) phillyblotter-json-data))
@@ -275,10 +274,41 @@ Version 2015-04-14"
     )
   )
 
+(defun phillyblotter-display-crime-stats(neighborhoodid)
+  "Displays statistics for a given neighborhood."
+  (interactive "sEnter Philly Neighborhood name or ID")
+  (phillyblotter-fetch-json (concat phillyblotter-url "YTD/" neighborhoodid "/"))
+
+  (switch-to-buffer "*Crime Stats*")
+  (org-mode)
+  (insert "|Crime|")
+  (let* ((first (elt phillyblotter-json-data 0)))
+    ;;(insert "|Crime|")
+    (mapc (lambda(x) 
+	       (insert (concat (number-to-string (assoc-default 'Year x)) "|"))
+	    )
+	  (assoc-default 'Data first))
+    )
+  (insert "\n")
+  (insert "|---\n")
+
+  (mapc (lambda(x)
+	   (insert (concat "|" (assoc-default 'CrimeText x) "|"))
+	   (mapc (lambda(y)
+		   (insert (concat (number-to-string (alist-get 'Count y)) "|"))
+		   )
+		 (assoc-default 'Data x))
+	   (insert "\n")
+	)
+	phillyblotter-json-data)
+
+  (org-table-align)
+  )
+
 (defun phillyblotter-display-crime(crimeid)
   "Displays a crime given the DCN number."
   (interactive "sEnter Philadelphia Police DCN number:")
-  (phillyblotter-fetch-json (concat "https://www.philadelinquency.com/phillycrime/api/Crime/" crimeid "/"))
+  (phillyblotter-fetch-json (concat phillyblotter-url "Crime/" crimeid "/"))
   
   (let* ((dcn (assoc-default 'DCN phillyblotter-json-data))
 	 (fullcrimedetail (assoc-default 'FullCrimeDetail phillyblotter-json-data))
